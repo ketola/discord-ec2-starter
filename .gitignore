@@ -1,5 +1,5 @@
-/backend/target
-/backed/bin
+/backend/target/*
+/backend/bin/*
 /backend/.serverless
 /backend/.classpath
 /backend/.project
