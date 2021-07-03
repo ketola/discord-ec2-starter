@@ -24,6 +24,8 @@ provider:
   name: aws
   runtime: java8
   lambdaHashingVersion: 20201221
+  memorySize: 3072
+  timeout: 10
 
 # you can overwrite defaults here
 #  stage: dev
@@ -62,7 +64,7 @@ functions:
 #    Check the event documentation for details
     events:
       - httpApi:
-          path: /discord-bot/slash
+          path: /discord-bot/command
           method: post
 #      - websocket: $connect
 #      - s3: ${env:BUCKET}

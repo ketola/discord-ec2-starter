@@ -39,6 +39,8 @@ public class Handler implements RequestHandler<Map<String, Object>, ApiGatewayRe
 	public ApiGatewayResponse handleRequest(Map<String, Object> input, Context context) {
 		LOG.info("received: {}", input);
 		
+		Security.addProvider(new BouncyCastleProvider()); 
+		
 		ObjectMapper mapper = new ObjectMapper();
 		DiscordRequest discordRequest = null;
 		try {
@@ -48,22 +50,44 @@ public class Handler implements RequestHandler<Map<String, Object>, ApiGatewayRe
 		}
 		
 		if(discordRequest instanceof PingRequest) {
-			return handlePingRequest();
+			return handlePingRequest(input);
 		} else if(discordRequest instanceof InteractionRequest) {
-			return handleInteractionRequest(input);
+			return handleInteractionRequest(discordRequest, input);
 		} 
 		throw new IllegalArgumentException();	
 	}
 	
-	private ApiGatewayResponse handlePingRequest() {
+	private ApiGatewayResponse handlePingRequest(Map<String, Object> input) {
+		Map<String, String> headers = (Map<String, String>) input.get("headers");
+		String signature = headers.get("x-signature-ed25519");
+		String timestamp = headers.get("x-signature-timestamp");
+		String body = input.get("body").toString();
+		
+		try {
+			LOG.info("Verify signature");
+			// verify the signature
+			java.security.Signature sgr = java.security.Signature.getInstance("Ed25519", "BC");
+			sgr.initVerify(fromHexString(PUBLIC_KEY));
+			sgr.update((timestamp + body).getBytes());
+			if(!sgr.verify(Hex.decode(signature))) {
+				return ApiGatewayResponse.builder()
+						.setStatusCode(401)
+						.build();
+			}
+		} catch (NoSuchAlgorithmException | NoSuchProviderException | InvalidKeyException | SignatureException e) {
+			e.printStackTrace();
+			return ApiGatewayResponse.builder()
+					.setStatusCode(401)
+					.build();
+		}
+		LOG.info("Signature ok, return PONG");
 		return ApiGatewayResponse.builder()
 				.setStatusCode(200)
 				.setObjectBody(new PingResponse())
 				.build();
 	}
 	
-	private ApiGatewayResponse handleInteractionRequest(Map<String, Object> input) {
-		Security.addProvider(new BouncyCastleProvider()); 
+	private ApiGatewayResponse handleInteractionRequest(DiscordRequest discordRequest, Map<String, Object> input) {
 		Map<String, String> headers = (Map<String, String>) input.get("headers");
 		
 		String signature = headers.get("x-signature-ed25519");
